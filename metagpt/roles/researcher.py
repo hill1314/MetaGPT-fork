@@ -35,6 +35,7 @@ class Researcher(Role):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # 包含的动作
         self.set_actions([CollectLinks, WebBrowseAndSummarize, ConductResearch])
         self._set_react_mode(RoleReactMode.BY_ORDER.value, len(self.actions))
         if self.language not in ("en-us", "zh-cn"):

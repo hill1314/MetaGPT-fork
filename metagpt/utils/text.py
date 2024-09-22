@@ -31,6 +31,7 @@ def reduce_message_length(
     raise RuntimeError("fail to reduce message length")
 
 
+# 将文本分割成最大标记大小的块，生成提示词
 def generate_prompt_chunk(
     text: str,
     prompt_template: str,

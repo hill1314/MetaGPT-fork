@@ -48,6 +48,7 @@ based on the link credibility. If two results have equal credibility, prioritize
 ranked results' indices in JSON format, like [0, 1, 3, 4, ...], without including other words.
 """
 
+# 网页浏览器总结提示词
 WEB_BROWSE_AND_SUMMARIZE_PROMPT = """### Requirements
 1. Utilize the text in the "Reference Information" section to respond to the question "{query}".
 2. If the question cannot be directly answered using the text, but the text is related to the research topic, please provide \
@@ -75,6 +76,7 @@ above. The report must meet the following requirements:
 """
 
 
+# 拆分问题并搜索结果
 class CollectLinks(Action):
     """Action class to collect links from a search engine."""
 
@@ -87,6 +89,7 @@ class CollectLinks(Action):
 
     @model_validator(mode="after")
     def validate_engine_and_run_func(self):
+        # 搜索引擎
         if self.search_engine is None:
             self.search_engine = SearchEngine.from_search_config(self.config.search, proxy=self.config.proxy)
         return self
@@ -110,6 +113,7 @@ class CollectLinks(Action):
             A dictionary containing the search questions as keys and the collected URLs as values.
         """
         system_text = system_text if system_text else RESEARCH_TOPIC_SYSTEM.format(topic=topic)
+        # 搜索问题关键字
         keywords = await self._aask(SEARCH_TOPIC_PROMPT, [system_text])
         try:
             keywords = OutputParser.extract_struct(keywords, list)
@@ -117,6 +121,7 @@ class CollectLinks(Action):
         except Exception as e:
             logger.exception(f"fail to get keywords related to the research topic '{topic}' for {e}")
             keywords = [topic]
+        # 搜索结果
         results = await asyncio.gather(*(self.search_engine.run(i, as_string=False) for i in keywords))
 
         def gen_msg():
@@ -134,8 +139,10 @@ class CollectLinks(Action):
                     break
 
         model_name = config.llm.model
+        # 提炼 提示词
         prompt = reduce_message_length(gen_msg(), model_name, system_text, config.llm.max_token)
         logger.debug(prompt)
+        # 生成 二次查询需要的 问题列表
         queries = await self._aask(prompt, [system_text])
         try:
             queries = OutputParser.extract_struct(queries, list)
@@ -145,6 +152,7 @@ class CollectLinks(Action):
             queries = keywords
         ret = {}
         for query in queries:
+            # 搜索和网址排序
             ret[query] = await self._search_and_rank_urls(topic, query, url_per_query)
         return ret
 
@@ -179,6 +187,7 @@ class CollectLinks(Action):
         return [i["link"] for i in results[:num_results]]
 
 
+# 流量网页生成摘要
 class WebBrowseAndSummarize(Action):
     """Action class to explore the web and provide summaries of articles and webpages."""
 
@@ -216,6 +225,7 @@ class WebBrowseAndSummarize(Action):
         Returns:
             A dictionary containing the URLs as keys and their summaries as values.
         """
+        # 网页内容
         contents = await self.web_browser_engine.run(url, *urls)
         if not urls:
             contents = [contents]
@@ -225,6 +235,7 @@ class WebBrowseAndSummarize(Action):
         for u, content in zip([url, *urls], contents):
             content = content.inner_text
             chunk_summaries = []
+            # 将文本分割成 多个提示词
             for prompt in generate_prompt_chunk(content, prompt_template, self.llm.model, system_text, 4096):
                 logger.debug(prompt)
                 summary = await self._aask(prompt, [system_text])
@@ -241,7 +252,9 @@ class WebBrowseAndSummarize(Action):
                 continue
 
             content = "\n".join(chunk_summaries)
+            # 格式化提示词
             prompt = WEB_BROWSE_AND_SUMMARIZE_PROMPT.format(query=query, content=content)
+            # 调用模型 将多个片段摘要 生成 总摘要
             summary = await self._aask(prompt, [system_text])
             summaries[u] = summary
         return summaries

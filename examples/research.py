@@ -6,8 +6,9 @@ from metagpt.roles.researcher import RESEARCH_PATH, Researcher
 
 
 async def main():
+    # 问题
     topic = "dataiku vs. datarobot"
-    role = Researcher(language="en-us")
+    role = Researcher(language="zh-cn")
     await role.run(topic)
     print(f"save report to {RESEARCH_PATH / f'{topic}.md'}.")
 

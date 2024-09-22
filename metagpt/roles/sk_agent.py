@@ -64,6 +64,7 @@ class SkAgent(Role):
         self.import_semantic_skill_from_directory = self.kernel.import_semantic_skill_from_directory
         self.import_skill = self.kernel.import_skill
 
+    # 思考
     async def _think(self) -> None:
         self._set_state(0)
         # how funny the interface is inconsistent
@@ -73,6 +74,7 @@ class SkAgent(Role):
         elif any(isinstance(self.planner, cls) for cls in [SequentialPlanner, ActionPlanner]):
             self.plan = await self.planner.create_plan_async(self.rc.important_memory[-1].content)
 
+    # 行动
     async def _act(self) -> Message:
         # how funny the interface is inconsistent
         result = None
