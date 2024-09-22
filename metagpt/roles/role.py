@@ -257,6 +257,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         """Add action to the role."""
         self.set_actions([action])
 
+    # 绑定动作
     def set_actions(self, actions: list[Union[Action, Type[Action]]]):
         """Add actions to the role.
 
